@@ -20,6 +20,11 @@ output vingtSept
 
 ### Code en sortie du compilateur :
 ```Assembly
+DATA SEGMENT
+	trois DD
+	neuf DD
+	vingtSept DD
+DATA ENDS
 CODE SEGMENT
 	mov eax, 3
 	mov trois, eax
@@ -42,10 +47,12 @@ CODE SEGMENT
 	pop ebx
 	div ebx, eax
 	mov eax, ebx
-	mov vingtEtUn, eax
-	mov eax, vingtEtUn
+	mov vingtSept, eax
+	mov eax, vingtSept
 	out eax
 CODE ENDS
+
+
 ```
 ### Résultat attendu lors de l'exécution du code :
 
