@@ -1,11 +1,15 @@
 package fr.usmb.m1isc.compilation.tp;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 public class Tree {
     private String value;
     private Tree[] leaves;
     private NodeEnum type;
+
+    private int cpt;
 
     public Tree(NodeEnum nodetype, String value, Tree left, Tree right) {
         if(left != null || right != null){
@@ -15,6 +19,7 @@ public class Tree {
         }
         this.value = value;
         this.type = nodetype;
+        this.cpt = 0;
     }
 
     public Tree(NodeEnum nodetype, String value, Tree left) {
@@ -53,49 +58,58 @@ public class Tree {
         return res;
     }
 
-    public String generateDataSegment(){
-        String res = "";
+    public Set<String> getAllVars(){
+        Set<String> res = new LinkedHashSet<>();
         if(this.type == NodeEnum.LET){
-            res += "\t"+this.leaves[0].value+" DD\n";
+            res.add(this.leaves[0].value);
         }
         if(leaves != null) {
-            if (leaves[0] != null) res += leaves[0].generateDataSegment();
-            if (leaves[1] != null) res += leaves[1].generateDataSegment();
+            if (leaves[0] != null) res.addAll(leaves[0].getAllVars());
+            if (leaves[1] != null) res.addAll(leaves[1].getAllVars());
+        }
+        return res;
+    }
+
+    public String generateDataSegment(){
+        String res = "";
+        for(String var : getAllVars()){
+            res += "\t" + var + " DD\n";
         }
         return res;
     }
 
     public String generateNodeCode(){
         String res = "";
+        int cpt_tmp = ++cpt;
         switch(type){
-            case INTEGER: //DONE
-                res += "\tmov eax " + value + "\n";
+            case INTEGER:
+                res += "\tmov eax, " + value + "\n";
                 break;
-            case IDENTIFIER: //DONE
-                res += "\tmov eax " + value + "\n";
+            case IDENTIFIER:
+                res += "\tmov eax, " + value + "\n";
                 break;
-            case PLUS: //DONE
+            case PLUS:
                 res += leaves[1].generateNodeCode();
                 res += "\tpush eax\n";
                 res += leaves[0].generateNodeCode();
                 res += "\tpop ebx\n";
                 res += "\tadd eax, ebx\n";
                 break;
-            case MINUS: //DONE
+            case MINUS:
                 res += leaves[1].generateNodeCode();
                 res += "\tpush eax\n";
                 res += leaves[0].generateNodeCode();
                 res += "\tpop ebx\n";
                 res += "\tsub eax, ebx\n";
                 break;
-            case MULTI: //DONE
+            case MULTI:
                 res += leaves[0].generateNodeCode();
                 res += "\tpush eax\n";
                 res += leaves[1].generateNodeCode();
                 res += "\tpop ebx\n";
                 res += "\tmul eax, ebx\n";
                 break;
-            case DIVIDE: //DONE
+            case DIVIDE:
                 res += leaves[0].generateNodeCode();
                 res += "\tpush eax\n";
                 res += leaves[1].generateNodeCode();
@@ -104,63 +118,81 @@ public class Tree {
                 res += "\tmov eax, ebx\n";
                 break;
             case MOD:
-                //TODO
-                break;
-            case EQUAL: //Not used in LET affectation
-                //TODO
+                res += leaves[1].generateNodeCode();
+                res += "\tpush eax\n";
+                res += leaves[0].generateNodeCode();
+                res += "\tpop ebx\n";
+                res += "\tmov ecx, eax\n";
+                res += "\tdiv ecx, ebx\n";
+                res += "\tmul ecx, ebx\n";
+                res += "\tsub eax, ecx\n";
                 break;
             case INF:
-                //TODO
+                res += leaves[0].generateNodeCode();
+                res += "\tpush eax\n";
+                res += leaves[1].generateNodeCode();
+                res += "\tpop ebx\n";
+                res += "\tsub eax, ebx\n";
+                res += "\tjle faux_inf_" + cpt_tmp + "\n";
+                res += "\tmov eax, 1\n";
+                res += "\tjmp sortie_inf_" + cpt_tmp + "\n";
+                res += "faux_inf_" + cpt_tmp + ":\n";
+                res += "\tmov eax, 0\n";
+                res += "sortie_inf_" + cpt_tmp + ":\n";
                 break;
             case SUP:
-                //TODO
-                break;
+                System.err.println("> is not implemented");
             case INF_EQ:
-                //TODO
+                System.err.println("<= is not implemented");
                 break;
             case SUP_EQ:
-                //TODO
+                System.err.println(">= is not implemented");
                 break;
             case LET:
                 res += leaves[1].generateNodeCode();
                 res += "\tmov "+leaves[0].value+", eax\n";
                 break;
             case IF:
-                //TODO
-                break;
-            case THEN:
-                //TODO
-                break;
-            case ELSE:
-                //TODO
+                this.cpt = cpt_tmp + 1;
+                res += leaves[0].generateNodeCode();
+                res += "\tjz else_"+cpt_tmp+"\n";
+                res += leaves[1].leaves[0].generateNodeCode();
+                res += "\tjmp fin_if_"+cpt_tmp+"\n";
+                res += "else_"+cpt_tmp+":\n";
+                res += leaves[1].leaves[1].generateNodeCode();
+                res += "fin_if_"+cpt_tmp+":\n";
                 break;
             case WHILE:
-                //TODO
-                break;
-            case DO:
-                //TODO
+                this.cpt = cpt_tmp + 1;
+                res+= "debut_while_"+cpt_tmp+":\n";
+                res += leaves[0].generateNodeCode();
+                res += "\tjz sortie_while_"+cpt_tmp+"\n";
+                res += leaves[1].generateNodeCode();
+                res += "\tjmp debut_while_"+cpt_tmp+"\n";
+                res += "sortie_while_"+cpt_tmp+":\n";
                 break;
             case AND:
-                //TODO
+                System.err.println("AND is not implemented");
                 break;
             case OR:
-                //TODO
+                System.err.println("OR is not implemented");
                 break;
             case NOT:
-                //TODO
+                System.err.println("NOT is not implemented");
                 break;
             case INPUT:
-                //TODO
+                res += "\tin eax\n";
                 break;
             case OUTPUT:
-                //TODO
+                res += leaves[0].generateNodeCode();
+                res += "\tout eax\n";
                 break;
-            case SEMI: //DONE
+            case SEMI:
                 res += leaves[0].generateNodeCode();
                 res += leaves[1].generateNodeCode();
                 break;
-
-
+            default:
+                res += leaves[0].generateNodeCode();
         }
         return res;
     }
